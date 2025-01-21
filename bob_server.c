@@ -15,8 +15,6 @@
 
 
 
-
-
 int main(){
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t clilen;

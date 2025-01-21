@@ -8,10 +8,11 @@
 
 
 #include "tcp.h"
+#include "pqc.h"
 
 int tcp_client_connection_send(int sockfd, uint8_t* buf, unsigned int size){
 		int n;
-		printf("\n sockfd: %d & size: %u %d\n",sockfd,size,buf[2]);
+		printf("\nsockfd: %d & size: %u %d\n",sockfd,size,buf[2]);
 
 		//send the message line to the server
 		n = write(sockfd, buf, size);
@@ -28,25 +29,20 @@ int tcp_send_public_key(int sockfd, uint8_t *p_key){
     pubKey *args = (pubKey*) &buf[ sizeof(struct TCP_COMMAND) ];
     memcpy(args->pub_key,p_key,sizeof(pubKey));
     int i;
-    printf("Sending:\n");
-    for(i=0 ; i < OQS_KEM_kyber_768_length_public_key; i++){
-            printf("%d ", args->pub_key[i]);
-    }
+    printf("Sending public key to bob\n");
     return tcp_client_connection_send(sockfd, (uint8_t*)buf, sizeof(struct TCP_COMMAND) + TCP_COMMAND_ARGLEN(*cmd));
 }
 
-int tcp_send_encaps_shared_cipher(int sockfd, uint8_t *ciphertext, uint8_t *shared_secret_e){
+int tcp_send_encaps_shared_cipher(int sockfd, uint8_t *ciphertext){
     uint8_t buf[20000] = INIT_TCP_COMMAND(SEND_ENCAPS_CIPHER,sizeof(encapsCipher));
     struct TCP_COMMAND *cmd = (struct TCP_COMMAND *) buf;
     encapsCipher *args = (encapsCipher*) &buf[ sizeof(struct TCP_COMMAND) ];
     memcpy(args->ciphertext,ciphertext,OQS_KEM_kyber_768_length_ciphertext);
-    memcpy(args->shared_secret_e,shared_secret_e,OQS_KEM_kyber_768_length_ciphertext);
+   
 
     int i;
-    printf("Sending:\n");
-    for(i=0 ; i < OQS_KEM_kyber_768_length_public_key; i++){
-            printf("%d ", args->pub_key[i]);
-    }
+    printf("Sending cipher text to Alice\n");
+   
     return tcp_client_connection_send(sockfd, (uint8_t*)buf, sizeof(struct TCP_COMMAND) + TCP_COMMAND_ARGLEN(*cmd));
 }
 
@@ -70,11 +66,40 @@ void tcp_server_command_parser(struct TCP_COMMAND recvcmd, int sockfd){
         case SEND_PUB_KEY:
         {
             pubKey *args = (pubKey *) buf;
-            printf("Public Key:\n");
+            printf("Public Key Recvd\n");
             
             ENCAPS(args->pub_key);
-
-
+            printf("Shared Secret Key:\n");
+            int i;
+            for(i=0;i< OQS_KEM_kyber_768_length_shared_secret; i++){
+                printf("%d ",shared_secret_e[i]);
+            }
+            printf("\n");
+            tcp_send_encaps_shared_cipher(sockfd,ciphertext);
+            break;
+        }
+        case SEND_ENCAPS_CIPHER:
+        {
+            encapsCipher *args  = (encapsCipher *)buf;
+            int i;
+            printf("Encaps recieved\n");
+            // for(i=0;i< OQS_KEM_kyber_768_length_shared_secret; i++){
+            //     printf("%d ",args->shared_secret_e[i]);
+            // }
+            memcpy(ciphertext,args->ciphertext, OQS_KEM_kyber_768_length_ciphertext);
+            DECAPS(ciphertext,secret_key);
+            printf("Decaps Done\n");
+            printf("Shared Secret Key:\n");
+            for(i=0;i< OQS_KEM_kyber_768_length_shared_secret; i++){
+                printf("%d ",shared_secret_d[i]);
+            }
+            printf("Done\n");
+            break;
+        }
+        default:
+        {
+            printf("Invalid Command");
+            break;
         }
     }
 }
