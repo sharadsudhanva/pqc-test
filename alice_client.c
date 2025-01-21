@@ -36,8 +36,8 @@ int main(int argc, char *argv[])
         {
                 error("Binding failed");
         }
-        printf("Binded \n");
-
+	#printf("Binded \n");
+	
         bzero((char *) &serv_addr, sizeof(serv_addr));
         serv_addr.sin_family = AF_INET;
         // inet_pton(AF_INET, argv[1],&serv_addr.sin_addr);
